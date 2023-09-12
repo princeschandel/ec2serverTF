@@ -1,0 +1,98 @@
+provider "aws" {
+  region = "us-east-1"
+}
+
+##### VPC
+
+resource "aws_vpc" "myvpc" {
+  cidr_block = "10.0.0.0/16"
+}
+
+####### Internet Gatway#####
+
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.myvpc.id
+
+  tags = {
+    Name = "myinternetgatway"
+  }
+}
+
+######Subnet Resource#########
+
+resource "aws_subnet" "mysubnet" {
+  vpc_id     = aws_vpc.myvpc.id
+  cidr_block = "10.0.1.0/24"
+
+  tags = {
+    Name = "subnet"
+  }
+}
+
+############## Route Table Resource##########
+
+resource "aws_route_table" "myroute" {
+  vpc_id = aws_vpc.myvpc.id
+
+  route = []
+    tags = {
+    Name = "example"
+  }
+}
+
+
+######## aws-route######    
+
+resource "aws_route" "r" {
+  route_table_id         = aws_route_table.myroute.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.igw.id
+  depends_on             = [aws_route_table.myroute]
+}
+
+
+###### Security Group#######
+resource "aws_security_group" "mysg" {
+  name        = "allow_tls"
+  description = "All traffic allow "
+  vpc_id      = aws_vpc.myvpc.id
+
+  ingress {
+    description      = "all port allow"
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = null
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    Name = "allow_all-traffic"
+  }
+}
+
+######### EC2 
+resource "aws_instance" "myec2" {
+  ami           = "ami-01c647eace872fc02"
+  instance_type = "t2.micro"
+  subnet_id =    aws_subnet.mysubnet.id
+    tags = {
+    Name = "HelloWorld"
+  }
+}
+
+########route Associtaion
+
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.mysubnet.id
+  route_table_id = aws_route_table.myroute.id
+}
+
